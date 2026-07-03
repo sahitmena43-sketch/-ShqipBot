@@ -23,7 +23,7 @@ public class ShqipBot extends ListenerAdapter {
     private Map<String, Bet> bets = new HashMap<>();
     private Map<String, List<Bet>> userBets = new HashMap<>();
     
-    private final String ADMIN_ID = "781121784526929950"; // Zëvendëso me ID-në tënde!
+    private final String ADMIN_ID = "123456789012345678"; // Zëvendëso me ID-në tënde!
     
     // ==================== 20 PUNË ALLA SHQIPTARE ====================
     private final String[][] punet = {
@@ -281,12 +281,12 @@ public class ShqipBot extends ListenerAdapter {
             
             EmbedBuilder embed = new EmbedBuilder()
                 .setColor(suksesi ? Color.GREEN : Color.RED)
-                .setTitle("🔫 GRABISTJE 🔫");
+                .setTitle("🔫 GRABITJE 🔫");
             
             if (suksesi && balanceViktima >= shuma) {
                 db.zbritPara(target.getId(), shuma);
                 db.shtoPara(userId, shuma);
-                embed.setDescription("**" + event.getAuthor().getName() + "** grabisi @" + targetName)
+                embed.setDescription("**" + event.getAuthor().getName() + "** grabiti @" + targetName)
                     .addField("💰 Shuma", "+" + shuma + " lekë", true)
                     .addField("🎯 Viktima", "@" + targetName, true)
                     .addField("📊 Statusi", "✅ SUKSES", true);
@@ -402,9 +402,9 @@ public class ShqipBot extends ListenerAdapter {
                 .setTitle("🇦🇱 SHQIPBOT - Lista e Komandave 🇦🇱")
                 .setDescription("Boti ekonomik 100% në gjuhën shqipe!")
                 .addField("💼 **PUNË**", "`'work` - Puno në Shqipëri (20 punë alla shqiptare)", false)
-                .addField("🍑 **SHËRBIME**", "`'slut` - Shërbime të dyshimta (10 suksese + 10 dështime)", false)
-                .addField("😈 **KRIM**", "`'crime` - Punë kriminale (10 suksese + 10 dështime)", false)
-                .addField("🔫 **GRABISTJE**", "`'rob @user` - Grabiste dikë", false)
+                .addField("🍑 **SHËRBIME**", "`'slut` - Shërbime të dyshimta", false)
+                .addField("😈 **KRIM**", "`'crime` - Punë kriminale", false)
+                .addField("🔫 **GRABITJE**", "`'rob @user` - Grabite dikë", false)
                 .addField("💰 **FINANCA**", "`'bal` - Gjendja\n`'dep` - Bonus ditor\n`'with` - Tërhiq", false)
                 .addField("⚽ **BASTE**", 
                     "`'bet 1 100 Skuadra1` - Bast për fitues Skuadra 1 (2.0x)\n" +
