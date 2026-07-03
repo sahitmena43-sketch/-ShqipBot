@@ -16,12 +16,18 @@ public class Main {
             return;
         }
         
-        System.out.println("✅ Token-i u lexua!");
+        System.out.println("✅ Token-i u lexua nga variabli i mjedisit!");
         System.out.println("🚀 Duke nisur ShqipBot-in...");
         
         try {
             ShqipBot bot = new ShqipBot(botToken);
-            System.out.println("✅ ShqipBot është gati!");
+            System.out.println("✅ ShqipBot është gati dhe po punon 24/7!");
+            
+            // 🔥 KJO E MBAN BOT-IN GJALLË 🔥
+            while (true) {
+                Thread.sleep(60000); // Sleep për 1 minutë
+                System.out.println("💓 ShqipBot është gjallë...");
+            }
         } catch (Exception e) {
             System.err.println("❌ Gabim: " + e.getMessage());
             e.printStackTrace();

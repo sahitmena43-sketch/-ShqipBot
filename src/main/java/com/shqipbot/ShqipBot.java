@@ -254,54 +254,54 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== 'rob @user ====================
-        else if (command.matches("^'rob @\\w+$")) {
-            String targetName = command.split("@")[1];
-            User target = null;
-            try {
-                for (var member : event.getGuild().getMembers()) {
-                    if (member.getUser().getName().equalsIgnoreCase(targetName)) {
-                        target = member.getUser();
-                        break;
-                    }
-                }
-            } catch (Exception e) {
-                event.getChannel().sendMessage("❌ Nuk mund të gjej përdoruesin.").queue();
-                return;
+         // ==================== 'rob @user ====================
+           else if (command.matches("^'rob @\\w+$")) {
+           String targetName = command.split("@")[1];
+           User target = null;
+         try {
+        for (var member : event.getGuild().getMembers()) {
+            if (member.getUser().getName().equalsIgnoreCase(targetName)) {
+                target = member.getUser();
+                break;
             }
-            
-            if (target == null || target.getId().equals(userId)) {
-                event.getChannel().sendMessage("❌ Nuk mund të grabisësh veten.").queue();
-                return;
-            }
-            
-            int shuma = random.nextInt(300) + 50;
-            boolean suksesi = random.nextDouble() > 0.4;
-            int balanceViktima = db.merrBalance(target.getId());
-            
-            EmbedBuilder embed = new EmbedBuilder()
-                .setColor(suksesi ? Color.GREEN : Color.RED)
-                .setTitle("🔫 GRABITJE 🔫");
-            
-            if (suksesi && balanceViktima >= shuma) {
-                db.zbritPara(target.getId(), shuma);
-                db.shtoPara(userId, shuma);
-                embed.setDescription("**" + event.getAuthor().getName() + "** grabiti @" + targetName)
-                    .addField("💰 Shuma", "+" + shuma + " lekë", true)
-                    .addField("🎯 Viktima", "@" + targetName, true)
-                    .addField("📊 Statusi", "✅ SUKSES", true);
-            } else {
-                db.zbritPara(userId, 200);
-                embed.setDescription("**" + event.getAuthor().getName() + "** u kap duke grabisur @" + targetName)
-                    .addField("💰 Humbja", "-200 lekë", true)
-                    .addField("🚔 Statusi", "❌ DËSHTIM", true);
-            }
-            
-            embed.setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
-            
-            event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
+    } catch (Exception e) {
+        event.getChannel().sendMessage("❌ Nuk mund të gjej përdoruesin.").queue();
+        return;
+    }
+    
+    if (target == null || target.getId().equals(userId)) {
+        event.getChannel().sendMessage("❌ Nuk mund të grabisësh veten.").queue();
+        return;
+    }
+    
+    int shuma = random.nextInt(300) + 50;
+    boolean suksesi = random.nextDouble() > 0.4;
+    int balanceViktima = db.merrBalance(target.getId());
+    
+    EmbedBuilder embed = new EmbedBuilder()
+        .setColor(suksesi ? Color.GREEN : Color.RED)
+        .setTitle("🔫 GRABITJE 🔫");
+    
+    if (suksesi && balanceViktima >= shuma) {
+        db.zbritPara(target.getId(), shuma);
+        db.shtoPara(userId, shuma);
+        embed.setDescription("**" + event.getAuthor().getName() + "** grabiti @" + targetName)
+            .addField("💰 Shuma", "+" + shuma + " lekë", true)
+            .addField("🎯 Viktima", "@" + targetName, true)
+            .addField("📊 Statusi", "✅ SUKSES", true);
+    } else {
+        db.zbritPara(userId, 200);
+        embed.setDescription("**" + event.getAuthor().getName() + "** u kap duke grabitur @" + targetName)
+            .addField("💰 Humbja", "-200 lekë", true)
+            .addField("🚔 Statusi", "❌ DËSHTIM", true);
+    }
+    
+    embed.setFooter("ShqipBot © 2026", null)
+        .setTimestamp(new Date().toInstant());
+    
+    event.getChannel().sendMessageEmbeds(embed.build()).queue();
+   }
         
         // ==================== 'bal ====================
         else if (command.equals("'bal")) {
@@ -404,7 +404,7 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("💼 **PUNË**", "`'work` - Puno në Shqipëri (20 punë alla shqiptare)", false)
                 .addField("🍑 **SHËRBIME**", "`'slut` - Shërbime të dyshimta", false)
                 .addField("😈 **KRIM**", "`'crime` - Punë kriminale", false)
-                .addField("🔫 **GRABITJE**", "`'rob @user` - Grabite dikë", false)
+                .addField("🔫 **GRABITJE**", "`'rob @user` - Grabit dikë", false)
                 .addField("💰 **FINANCA**", "`'bal` - Gjendja\n`'dep` - Bonus ditor\n`'with` - Tërhiq", false)
                 .addField("⚽ **BASTE**", 
                     "`'bet 1 100 Skuadra1` - Bast për fitues Skuadra 1 (2.0x)\n" +
