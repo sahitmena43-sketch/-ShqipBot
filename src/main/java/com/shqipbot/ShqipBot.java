@@ -23,7 +23,8 @@ public class ShqipBot extends ListenerAdapter {
     private Map<String, Bet> bets = new HashMap<>();
     private Map<String, List<Bet>> userBets = new HashMap<>();
     
-    private final String ADMIN_ID = "123456789012345678"; // Zëvendëso me ID-në tënde!
+    // 🔴 ADMIN_ID TËNDE E DISCORD-IT
+    private final String ADMIN_ID = "781121784526929950";
     
     // ==================== 20 PUNË ALLA SHQIPTARE ====================
     private final String[][] punet = {
@@ -103,6 +104,7 @@ public class ShqipBot extends ListenerAdapter {
         {"Vodhe makinë por ishte e policisë", "-550"}
     };
     
+    // ==================== KONSTRUKTORI ====================
     public ShqipBot(String token) throws Exception {
         this.db = new Database();
         this.random = new Random();
@@ -122,6 +124,7 @@ public class ShqipBot extends ListenerAdapter {
         startBetScheduler();
     }
     
+    // ==================== SCHEDULER PËR BASTE ====================
     private void startBetScheduler() {
         new Timer().scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -150,6 +153,7 @@ public class ShqipBot extends ListenerAdapter {
         }
     }
     
+    // ==================== METODA KRYESORE ====================
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
@@ -254,54 +258,54 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-         // ==================== 'rob @user ====================
-           else if (command.matches("^'rob @\\w+$")) {
-           String targetName = command.split("@")[1];
-           User target = null;
-         try {
-        for (var member : event.getGuild().getMembers()) {
-            if (member.getUser().getName().equalsIgnoreCase(targetName)) {
-                target = member.getUser();
-                break;
+        // ==================== 'rob @user ====================
+        else if (command.matches("^'rob @\\w+$")) {
+            String targetName = command.split("@")[1];
+            User target = null;
+            try {
+                for (var member : event.getGuild().getMembers()) {
+                    if (member.getUser().getName().equalsIgnoreCase(targetName)) {
+                        target = member.getUser();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                event.getChannel().sendMessage("❌ Nuk mund të gjej përdoruesin.").queue();
+                return;
             }
+            
+            if (target == null || target.getId().equals(userId)) {
+                event.getChannel().sendMessage("❌ Nuk mund të grabisësh veten.").queue();
+                return;
+            }
+            
+            int shuma = random.nextInt(300) + 50;
+            boolean suksesi = random.nextDouble() > 0.4;
+            int balanceViktima = db.merrBalance(target.getId());
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(suksesi ? Color.GREEN : Color.RED)
+                .setTitle("🔫 GRABITJE 🔫");
+            
+            if (suksesi && balanceViktima >= shuma) {
+                db.zbritPara(target.getId(), shuma);
+                db.shtoPara(userId, shuma);
+                embed.setDescription("**" + event.getAuthor().getName() + "** grabiti @" + targetName)
+                    .addField("💰 Shuma", "+" + shuma + " lekë", true)
+                    .addField("🎯 Viktima", "@" + targetName, true)
+                    .addField("📊 Statusi", "✅ SUKSES", true);
+            } else {
+                db.zbritPara(userId, 200);
+                embed.setDescription("**" + event.getAuthor().getName() + "** u kap duke grabitur @" + targetName)
+                    .addField("💰 Humbja", "-200 lekë", true)
+                    .addField("🚔 Statusi", "❌ DËSHTIM", true);
+            }
+            
+            embed.setFooter("ShqipBot © 2026", null)
+                .setTimestamp(new Date().toInstant());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
-    } catch (Exception e) {
-        event.getChannel().sendMessage("❌ Nuk mund të gjej përdoruesin.").queue();
-        return;
-    }
-    
-    if (target == null || target.getId().equals(userId)) {
-        event.getChannel().sendMessage("❌ Nuk mund të grabisësh veten.").queue();
-        return;
-    }
-    
-    int shuma = random.nextInt(300) + 50;
-    boolean suksesi = random.nextDouble() > 0.4;
-    int balanceViktima = db.merrBalance(target.getId());
-    
-    EmbedBuilder embed = new EmbedBuilder()
-        .setColor(suksesi ? Color.GREEN : Color.RED)
-        .setTitle("🔫 GRABITJE 🔫");
-    
-    if (suksesi && balanceViktima >= shuma) {
-        db.zbritPara(target.getId(), shuma);
-        db.shtoPara(userId, shuma);
-        embed.setDescription("**" + event.getAuthor().getName() + "** grabiti @" + targetName)
-            .addField("💰 Shuma", "+" + shuma + " lekë", true)
-            .addField("🎯 Viktima", "@" + targetName, true)
-            .addField("📊 Statusi", "✅ SUKSES", true);
-    } else {
-        db.zbritPara(userId, 200);
-        embed.setDescription("**" + event.getAuthor().getName() + "** u kap duke grabitur @" + targetName)
-            .addField("💰 Humbja", "-200 lekë", true)
-            .addField("🚔 Statusi", "❌ DËSHTIM", true);
-    }
-    
-    embed.setFooter("ShqipBot © 2026", null)
-        .setTimestamp(new Date().toInstant());
-    
-    event.getChannel().sendMessageEmbeds(embed.build()).queue();
-   }
         
         // ==================== 'bal ====================
         else if (command.equals("'bal")) {
