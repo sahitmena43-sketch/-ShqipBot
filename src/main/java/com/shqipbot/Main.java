@@ -26,15 +26,27 @@ public class Main {
             // 🔥 KJO E MBAN BOT-IN GJALLË PA CRASH 🔥
             while (true) {
                 try {
-                    Thread.sleep(60000); // Sleep për 1 minutë
+                    Thread.sleep(60000);
                     System.out.println("💓 ShqipBot është gjallë...");
                 } catch (InterruptedException e) {
                     System.out.println("⚠️ Thread u ndërpre, por bot-i vazhdon...");
+                    Thread.currentThread().interrupt();
                 }
             }
         } catch (Exception e) {
-            System.err.println("❌ Gabim: " + e.getMessage());
+            System.err.println("❌ Gabim fatal: " + e.getMessage());
             e.printStackTrace();
+            // Mos dil nga programi - prit dhe rinis
+            while (true) {
+                try {
+                    Thread.sleep(5000);
+                    System.err.println("🔄 Duke u përpjekur të rinis...");
+                    ShqipBot bot = new ShqipBot(System.getenv("DISCORD_TOKEN"));
+                    System.out.println("✅ Bot-i u rinis me sukses!");
+                } catch (Exception ex) {
+                    System.err.println("❌ Rinisja dështoi: " + ex.getMessage());
+                }
+            }
         }
     }
 }
