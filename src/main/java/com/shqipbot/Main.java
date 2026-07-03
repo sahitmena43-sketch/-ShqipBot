@@ -23,10 +23,14 @@ public class Main {
             ShqipBot bot = new ShqipBot(botToken);
             System.out.println("✅ ShqipBot është gati dhe po punon 24/7!");
             
-            // 🔥 KJO E MBAN BOT-IN GJALLË 🔥
+            // 🔥 KJO E MBAN BOT-IN GJALLË PA CRASH 🔥
             while (true) {
-                Thread.sleep(60000); // Sleep për 1 minutë
-                System.out.println("💓 ShqipBot është gjallë...");
+                try {
+                    Thread.sleep(60000); // Sleep për 1 minutë
+                    System.out.println("💓 ShqipBot është gjallë...");
+                } catch (InterruptedException e) {
+                    System.out.println("⚠️ Thread u ndërpre, por bot-i vazhdon...");
+                }
             }
         } catch (Exception e) {
             System.err.println("❌ Gabim: " + e.getMessage());
