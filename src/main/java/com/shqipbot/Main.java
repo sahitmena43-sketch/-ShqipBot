@@ -23,14 +23,17 @@ public class Main {
             ShqipBot bot = new ShqipBot(botToken);
             System.out.println("✅ ShqipBot është gati dhe po punon 24/7!");
             
-            // 🔥 Në vend të while loop, JDA e mban lidhjen WebSocket gjallë
-            // Thjesht bllokoje thread-in kryesor
-            Object lock = new Object();
-            synchronized (lock) {
-                lock.wait();
+            // 🔥 KJO E MBAN BOT-IN GJALLË 🔥
+            while (true) {
+                try {
+                    Thread.sleep(60000);
+                    System.out.println("💓 ShqipBot është gjallë...");
+                } catch (InterruptedException e) {
+                    System.out.println("⚠️ Thread u ndërpre, por bot-i vazhdon...");
+                }
             }
         } catch (Exception e) {
-            System.err.println("❌ Gabim fatal: " + e.getMessage());
+            System.err.println("❌ Gabim: " + e.getMessage());
             e.printStackTrace();
         }
     }

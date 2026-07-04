@@ -9,6 +9,8 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import java.awt.Color;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class ShqipBot extends ListenerAdapter {
@@ -16,6 +18,7 @@ public class ShqipBot extends ListenerAdapter {
     private Database db;
     private Random random;
     private JDA jda;
+    private FootballAPI footballAPI;
     private String lastCommand = "";
     private long lastCommandTime = 0;
     
@@ -23,7 +26,6 @@ public class ShqipBot extends ListenerAdapter {
     private Map<String, Bet> bets = new HashMap<>();
     private Map<String, List<Bet>> userBets = new HashMap<>();
     
-    // 🔴 ADMIN_ID TËNDE E DISCORD-IT
     private final String ADMIN_ID = "781121784526929950";
     
     // ==================== 20 PUNË ALLA SHQIPTARE ====================
@@ -108,6 +110,15 @@ public class ShqipBot extends ListenerAdapter {
     public ShqipBot(String token) throws Exception {
         this.db = new Database();
         this.random = new Random();
+        
+        // Inicializo FootballAPI me API Key nga variablat e mjedisit
+        String apiKey = System.getenv("FOOTBALL_API_KEY");
+        if (apiKey != null && !apiKey.isEmpty()) {
+            this.footballAPI = new FootballAPI(apiKey);
+            System.out.println("⚽ FootballAPI u inicializua!");
+        } else {
+            System.out.println("⚠️ FOOTBALL_API_KEY nuk u gjet. Rezultatet do të jenë rastësore.");
+        }
         
         System.out.println("🔌 Duke u lidhur me Discord-in...");
         
@@ -376,10 +387,23 @@ public class ShqipBot extends ListenerAdapter {
         else if (command.startsWith("'match") && userId.equals(ADMIN_ID)) {
             String[] parts = command.split(" ");
             if (parts.length >= 4) {
-                // 🔥 Mblidh emrat e skuadrave (me hapësira)
                 String team1 = parts[1];
                 String team2 = parts[2];
                 String time = parts[3];
+                
+                if (footballAPI != null) {
+                    String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                    FootballAPI.MatchResult result = footballAPI.getMatchResult(team1, team2, today);
+                    
+                    if (result != null && "FT".equals(result.status)) {
+                        announceWinner(event, result, team1, team2);
+                        return;
+                    } else if (result != null) {
+                        announceMatchReal(event, team1, team2, time);
+                        return;
+                    }
+                }
+                
                 announceMatch(event, team1, team2, time);
             } else {
                 event.getChannel().sendMessage("❌ Përdorimi: `'match Skuadra1 Skuadra2 20:00`").queue();
@@ -450,7 +474,6 @@ public class ShqipBot extends ListenerAdapter {
             int tipi = Integer.parseInt(parts[1]);
             int amount = Integer.parseInt(parts[2]);
             
-            // 🔥 Mblidh emrin e skuadrës (me hapësira)
             StringBuilder teamName = new StringBuilder();
             for (int i = 3; i < parts.length; i++) {
                 teamName.append(parts[i]).append(" ");
@@ -526,9 +549,114 @@ public class ShqipBot extends ListenerAdapter {
         }
     }
     
-    // ==================== METODA PËR NDESHJET ====================
+    // ==================== METODA PËR NDESHJE ME API ====================
+    private void announceMatchReal(MessageReceivedEvent event, String team1, String team2, String time) {
+        String announcement = "@everyone 📢 **" + team1.toUpperCase() + "** vs **" + team2.toUpperCase() + "** do të zhvillojnë ndeshjen në **" + time + "** !\n" +
+                             "\n" +
+                             "📡 **Rezultatet nga API-Football!**\n" +
+                             "💰 **Koeficientët:**\n" +
+                             "• Fitues " + team1.toUpperCase() + ": **2.0x**\n" +
+                             "• Fitues " + team2.toUpperCase() + ": **2.0x**\n" +
+                             "• Barazim: **4.0x**\n" +
+                             "\n" +
+                             "💡 **Vë bastet tani!** \n" +
+                             "• `'bet 1 100 " + team1 + "` - Bast për fitues " + team1.toUpperCase() + "\n" +
+                             "• `'bet 2 100 " + team2 + "` - Bast për fitues " + team2.toUpperCase() + "\n" +
+                             "• `'bet 3 100 Draw` - Bast për barazim\n" +
+                             "\n" +
+                             "📢 **Basti mbyllet kur të fillojë ndeshja!**\n" +
+                             "\n" +
+                             "🔍 **Rezultatet reale do të merren nga API-Football!**";
+        
+        event.getChannel().sendMessage(announcement).queue();
+        
+        scheduleResultCheck(event, team1, team2);
+    }
+    
+    private void scheduleResultCheck(MessageReceivedEvent event, String team1, String team2) {
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                FootballAPI.MatchResult result = footballAPI.getMatchResult(team1, team2, today);
+                
+                if (result != null && "FT".equals(result.status)) {
+                    announceWinner(event, result, team1, team2);
+                    this.cancel();
+                }
+            }
+        }, 60000, 300000);
+    }
+    
+    private void announceWinner(MessageReceivedEvent event, FootballAPI.MatchResult result, String team1, String team2) {
+        String resultText = "🏆 **" + result.winner.toUpperCase() + "** fitoi ndeshjen me rezultatin **" + 
+                           result.team1Goals + " - " + result.team2Goals + "**!";
+        
+        String announcement = "@everyone 📢 **Rezultati përfundimtar!**\n" +
+                             resultText + "\n" +
+                             "\n" +
+                             "✅ **Fituesit e basteve janë shpërblyer!**";
+        
+        event.getChannel().sendMessage(announcement).queue();
+        
+        List<String> winners = new ArrayList<>();
+        List<String> losers = new ArrayList<>();
+        
+        for (Map.Entry<String, Bet> entry : bets.entrySet()) {
+            Bet bet = entry.getValue();
+            
+            if (!bet.isSettled) {
+                boolean won = false;
+                
+                if (result.winnerType == 1 && bet.type == 1 && bet.team.equalsIgnoreCase(team1)) {
+                    won = true;
+                } else if (result.winnerType == 2 && bet.type == 2 && bet.team.equalsIgnoreCase(team2)) {
+                    won = true;
+                } else if (result.winnerType == 3 && bet.type == 3) {
+                    won = true;
+                }
+                
+                if (won) {
+                    int winAmount = (int)(bet.amount * bet.coefficient);
+                    db.shtoPara(bet.userId, winAmount);
+                    bet.isSettled = true;
+                    winners.add("🎉 **" + bet.username + "** fitoi **" + winAmount + "** lekë!");
+                } else {
+                    bet.isSettled = true;
+                    losers.add("😢 **" + bet.username + "** humbi **" + bet.amount + "** lekë.");
+                }
+            }
+        }
+        
+        StringBuilder finalMessage = new StringBuilder("@everyone 📊 **Përfundimi i basteve!**\n\n");
+        
+        if (!winners.isEmpty()) {
+            finalMessage.append("🎉 **FITUESIT:**\n");
+            for (String w : winners) {
+                finalMessage.append(w).append("\n");
+            }
+        }
+        
+        if (!losers.isEmpty()) {
+            finalMessage.append("\n😢 **HUMBËSIT:**\n");
+            for (String l : losers) {
+                finalMessage.append(l).append("\n");
+            }
+        }
+        
+        if (winners.isEmpty() && losers.isEmpty()) {
+            finalMessage.append("❌ Nuk kishte baste për këtë ndeshje.");
+        }
+        
+        event.getChannel().sendMessage(finalMessage.toString()).queue();
+        
+        bets.clear();
+        userBets.clear();
+    }
+    
+    // ==================== METODA PËR NDESHJE PA API (RASTËSORE) ====================
     private void announceMatch(MessageReceivedEvent event, String team1, String team2, String time) {
-        // 🔥 Njoftimi vetëm një herë në fillim
         String announcement = "@everyone 📢 **" + team1.toUpperCase() + "** vs **" + team2.toUpperCase() + "** do të zhvillojnë ndeshjen në **" + time + "** !\n" +
                              "\n" +
                              "💰 **Koeficientët:**\n" +
@@ -545,7 +673,6 @@ public class ShqipBot extends ListenerAdapter {
         
         event.getChannel().sendMessage(announcement).queue();
         
-        // 🔥 Programo përfundimin e ndeshjes pas 2 orësh
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
@@ -568,7 +695,6 @@ public class ShqipBot extends ListenerAdapter {
                     winnerType = 3;
                 }
                 
-                // 🔥 Njofto rezultatin përfundimtar (VETËM NJË HERË)
                 String resultAnnouncement = "@everyone 📢 **Rezultati përfundimtar!**\n" +
                                             resultText + "\n" +
                                             "\n" +
@@ -576,7 +702,6 @@ public class ShqipBot extends ListenerAdapter {
                 
                 event.getChannel().sendMessage(resultAnnouncement).queue();
                 
-                // 🔥 Shpërblej fituesit
                 List<String> winners = new ArrayList<>();
                 List<String> losers = new ArrayList<>();
                 
@@ -606,7 +731,6 @@ public class ShqipBot extends ListenerAdapter {
                     }
                 }
                 
-                // 🔥 Njofto fituesit dhe humbësit (VETËM NJË HERË)
                 StringBuilder finalMessage = new StringBuilder("@everyone 📊 **Përfundimi i basteve!**\n\n");
                 
                 if (!winners.isEmpty()) {
@@ -629,10 +753,9 @@ public class ShqipBot extends ListenerAdapter {
                 
                 event.getChannel().sendMessage(finalMessage.toString()).queue();
                 
-                // 🔥 Pastro bastet e përfunduara
                 bets.clear();
                 userBets.clear();
             }
-        }, 7200000); // 2 orë
+        }, 7200000);
     }
 }
