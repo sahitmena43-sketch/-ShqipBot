@@ -9,8 +9,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import java.awt.Color;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.*;
 
 public class ShqipBot extends ListenerAdapter {
@@ -18,107 +17,93 @@ public class ShqipBot extends ListenerAdapter {
     private Database db;
     private Random random;
     private JDA jda;
-    private FootballAPI footballAPI;
     private String lastCommand = "";
     private long lastCommandTime = 0;
     
-    // Sistem bastesh
-    private Map<String, Bet> bets = new HashMap<>();
-    private Map<String, List<Bet>> userBets = new HashMap<>();
-    
     private final String ADMIN_ID = "781121784526929950";
     
-    // ==================== 20 PUNË ALLA SHQIPTARE ====================
+    // ==================== 20 PUNË ====================
     private final String[][] punet = {
-        {"Shitës Euro në Rrugë", "Shite Euro false por turistët i deshën", "150"},
-        {"Kontrabandist TVSH", "Fshehe TVSH-në në tavan por ra dhe u zbulove", "200"},
-        {"Mësues i Gjuhës Shqipe", "Mësove 'qe' dhe 'ka' por nxënësit thanë 'ka qe'", "100"},
-        {"Menaxher Nëntoke", "Menaxhove biznesin nga bodrumi por policia erdhi", "180"},
-        {"Falsifikues Diplomash", "Bëre diplomë për kafshën por e mori seriozisht", "250"},
-        {"Përkthyes në Gjyq", "Përktheve nga shqip në shqip por gjyqtari u hutua", "120"},
-        {"Shitës Kravatash", "Shite kravata me ngjyra të çmendura por të gjithë i blenë", "90"},
-        {"Konsulent Politik", "Këshillove politikanin por ai bëri të kundërtën", "300"},
-        {"Gazetar Sporti", "Shkruajti lajm të rremë por u besuan", "130"},
-        {"Agjent Imobiliash", "Shite banesë në Tiranë por ishte në Mars", "250"},
-        {"Rregullues Shorti", "Rregullove shortin e Kupës por u zbulove", "400"},
-        {"Kameraman Dasmash", "Xhirove dasmën por ngatërrove nusen me kunatën", "110"},
-        {"Shitës Teli", "Shite tel të ndryshkur si të ri", "70"},
-        {"Noter i Rrugës", "Noterove dokumente pa vizë por i deshën", "160"},
-        {"Eksportues Vaji", "Eksportove vaj ulliri por ishte vaj makine", "220"},
-        {"Trajner Futbolli", "Trajnovat skuadrën por ata luanin basketboll", "190"},
-        {"Shitës Uji", "Shite ujë të paster por ishte nga lumi", "80"},
-        {"Menaxher Kulture", "Organizove koncert por këngëtari ishte i dehur", "140"},
-        {"Krijues Sloganesh", "Krijove slogan por e përdori kundërshtari", "170"},
-        {"Punonjës i BSH", "Punoje në BSH por i ngatërrove statistikat", "210"}
+        {"Shitës Euro në Rrugë", "Shite Euro false por turistët i deshën", "1500"},
+        {"Kontrabandist TVSH", "Fshehe TVSH-në në tavan por ra dhe u zbulove", "2000"},
+        {"Mësues i Gjuhës Shqipe", "Mësove 'qe' dhe 'ka' por nxënësit thanë 'ka qe'", "1000"},
+        {"Menaxher Nëntoke", "Menaxhove biznesin nga bodrumi por policia erdhi", "1800"},
+        {"Falsifikues Diplomash", "Bëre diplomë për kafshën por e mori seriozisht", "2500"},
+        {"Përkthyes në Gjyq", "Përktheve nga shqip në shqip por gjyqtari u hutua", "1200"},
+        {"Shitës Kravatash", "Shite kravata me ngjyra të çmendura por të gjithë i blenë", "900"},
+        {"Konsulent Politik", "Këshillove politikanin por ai bëri të kundërtën", "3000"},
+        {"Gazetar Sporti", "Shkruajti lajm të rremë por u besuan", "1300"},
+        {"Agjent Imobiliash", "Shite banesë në Tiranë por ishte në Mars", "2500"},
+        {"Rregullues Shorti", "Rregullove shortin e Kupës por u zbulove", "4000"},
+        {"Kameraman Dasmash", "Xhirove dasmën por ngatërrove nusen me kunatën", "1100"},
+        {"Shitës Teli", "Shite tel të ndryshkur si të ri", "700"},
+        {"Noter i Rrugës", "Noterove dokumente pa vizë por i deshën", "1600"},
+        {"Eksportues Vaji", "Eksportove vaj ulliri por ishte vaj makine", "2200"},
+        {"Trajner Futbolli", "Trajnovat skuadrën por ata luanin basketboll", "1900"},
+        {"Shitës Uji", "Shite ujë të paster por ishte nga lumi", "800"},
+        {"Menaxher Kulture", "Organizove koncert por këngëtari ishte i dehur", "1400"},
+        {"Krijues Sloganesh", "Krijove slogan por e përdori kundërshtari", "1700"},
+        {"Punonjës i BSH", "Punoje në BSH por i ngatërrove statistikat", "2100"}
     };
     
-    // ==================== SLUT - 10 SUKSESE + 10 DËSHTIME ====================
+    // ==================== SLUT ====================
     private final String[][] slutSukses = {
-        {"Tregove vallëzim te Pink Floyd", "200"},
-        {"Këndove në dasmë me fustan të shkurtër", "350"},
-        {"Bëre live në TikTok me veshje provokuese", "500"},
-        {"Bëre foto për OnlyFans në Kala", "450"},
-        {"Kërcen në 'Puls' në mes të natës", "400"},
-        {"Ofrove shërbim për shefin e plazhit", "300"},
-        {"Shite trupin në 'New York' për 24 orë", "250"},
-        {"Bëre striptiz në bachelorette party", "380"},
-        {"Fotove veten me Berishën", "420"},
-        {"Shfaqve trupin në makinë te Liqeni", "150"}
+        {"Tregove vallëzim te Pink Floyd", "2000"},
+        {"Këndove në dasmë me fustan të shkurtër", "3500"},
+        {"Bëre live në TikTok me veshje provokuese", "5000"},
+        {"Bëre foto për OnlyFans në Kala", "4500"},
+        {"Kërcen në 'Puls' në mes të natës", "4000"},
+        {"Ofrove shërbim për shefin e plazhit", "3000"},
+        {"Shite trupin në 'New York' për 24 orë", "2500"},
+        {"Bëre striptiz në bachelorette party", "3800"},
+        {"Fotove veten me Berishën", "4200"},
+        {"Shfaqve trupin në makinë te Liqeni", "1500"}
     };
     
     private final String[][] slutDeshtim = {
-        {"Ofrove masazh por klienti ishte inspektor", "-100"},
-        {"Të kapën me klient në makinë te Liqeni", "-250"},
-        {"Shefës i ofrove 'shërbim special' për të mbajtur punën", "-300"},
-        {"Ofrove taksi me 'shërbim shtesë' por ishte polic", "-150"},
-        {"Bëre foto për OnlyFans por ishte policia", "-200"},
-        {"Tregove trupin në plazh dhe të arrestuan", "-180"},
-        {"Këndove në dasmë por ishte e fejuara", "-220"},
-        {"Ofrove shërbim në hotel por ishte nusja", "-280"},
-        {"Bëre striptiz në familje", "-350"},
-        {"Shite trupin por ishte vetëm një shaka", "-130"}
+        {"Ofrove masazh por klienti ishte inspektor", "-1000"},
+        {"Të kapën me klient në makinë te Liqeni", "-2500"},
+        {"Shefës i ofrove 'shërbim special' për të mbajtur punën", "-3000"},
+        {"Ofrove taksi me 'shërbim shtesë' por ishte polic", "-1500"},
+        {"Bëre foto për OnlyFans por ishte policia", "-2000"},
+        {"Tregove trupin në plazh dhe të arrestuan", "-1800"},
+        {"Këndove në dasmë por ishte e fejuara", "-2200"},
+        {"Ofrove shërbim në hotel por ishte nusja", "-2800"},
+        {"Bëre striptiz në familje", "-3500"},
+        {"Shite trupin por ishte vetëm një shaka", "-1300"}
     };
     
-    // ==================== CRIME - 10 SUKSESE + 10 DËSHTIME ====================
+    // ==================== CRIME ====================
     private final String[][] crimeSukses = {
-        {"Shite CD të paluajtshme te 'Rruga e Kavajës'", "500"},
-        {"Kontrabandove cigare nga Mali i Zi", "1000"},
-        {"Shite narkotikë te shkolla 'Fan Noli'", "800"},
-        {"Vodhe bakër nga Kantieri", "600"},
-        {"Falsifikove Euro në shtëpi", "1200"},
-        {"Shite armë për bandën e Durrësit", "900"},
-        {"U fute ilegalisht në Greqi", "400"},
-        {"Shite patentë të rreme", "750"},
-        {"Vodhe makinë në Tiranë", "650"},
-        {"Grabitëse dyqani në Vlorë", "550"}
+        {"Shite CD të paluajtshme te 'Rruga e Kavajës'", "5000"},
+        {"Kontrabandove cigare nga Mali i Zi", "10000"},
+        {"Shite narkotikë te shkolla 'Fan Noli'", "8000"},
+        {"Vodhe bakër nga Kantieri", "6000"},
+        {"Falsifikove Euro në shtëpi", "12000"},
+        {"Shite armë për bandën e Durrësit", "9000"},
+        {"U fute ilegalisht në Greqi", "4000"},
+        {"Shite patentë të rreme", "7500"},
+        {"Vodhe makinë në Tiranë", "6500"},
+        {"Grabitëse dyqani në Vlorë", "5500"}
     };
     
     private final String[][] crimeDeshtim = {
-        {"U përpoqe të korruptosh policin", "-300"},
-        {"Të kapën me armë pa leje te 'Farka'", "-500"},
-        {"Grabitëse banke por ra alarmi", "-700"},
-        {"Shite narkotikë por ishte polic në civil", "-400"},
-        {"Kontrabandove duhan dhe të kapën në kufi", "-600"},
-        {"U përpoqe të vjedhësh bankë por u mbyll", "-350"},
-        {"Shite armë por ishin kuti për fëmijë", "-250"},
-        {"Falsifikove dokumenta dhe të zbuluan", "-450"},
-        {"U fute ilegalisht dhe të kthyen mbrapsht", "-200"},
-        {"Vodhe makinë por ishte e policisë", "-550"}
+        {"U përpoqe të korruptosh policin", "-3000"},
+        {"Të kapën me armë pa leje te 'Farka'", "-5000"},
+        {"Grabitëse banke por ra alarmi", "-7000"},
+        {"Shite narkotikë por ishte polic në civil", "-4000"},
+        {"Kontrabandove duhan dhe të kapën në kufi", "-6000"},
+        {"U përpoqe të vjedhësh bankë por u mbyll", "-3500"},
+        {"Shite armë por ishin kuti për fëmijë", "-2500"},
+        {"Falsifikove dokumenta dhe të zbuluan", "-4500"},
+        {"U fute ilegalisht dhe të kthyen mbrapsht", "-2000"},
+        {"Vodhe makinë por ishte e policisë", "-5500"}
     };
     
     // ==================== KONSTRUKTORI ====================
     public ShqipBot(String token) throws Exception {
         this.db = new Database();
         this.random = new Random();
-        
-        // Inicializo FootballAPI me API Key nga variablat e mjedisit
-        String apiKey = System.getenv("FOOTBALL_API_KEY");
-        if (apiKey != null && !apiKey.isEmpty()) {
-            this.footballAPI = new FootballAPI(apiKey);
-            System.out.println("⚽ FootballAPI u inicializua!");
-        } else {
-            System.out.println("⚠️ FOOTBALL_API_KEY nuk u gjet. Rezultatet do të jenë rastësore.");
-        }
         
         System.out.println("🔌 Duke u lidhur me Discord-in...");
         
@@ -131,37 +116,6 @@ public class ShqipBot extends ListenerAdapter {
         
         jda.awaitReady();
         System.out.println("✅ ShqipBot u lidh! Ping: " + jda.getGatewayPing() + " ms");
-        
-        startBetScheduler();
-    }
-    
-    // ==================== SCHEDULER PËR BASTE ====================
-    private void startBetScheduler() {
-        new Timer().scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                checkExpiredBets();
-            }
-        }, 0, 60000);
-    }
-    
-    private void checkExpiredBets() {
-        long now = System.currentTimeMillis();
-        List<String> toRemove = new ArrayList<>();
-        
-        for (Map.Entry<String, Bet> entry : bets.entrySet()) {
-            Bet bet = entry.getValue();
-            if (now > bet.expiryTime) {
-                toRemove.add(entry.getKey());
-            }
-        }
-        
-        for (String betId : toRemove) {
-            bets.remove(betId);
-            for (List<Bet> userBetList : userBets.values()) {
-                userBetList.removeIf(b -> b.betId.equals(betId));
-            }
-        }
     }
     
     // ==================== METODA KRYESORE ====================
@@ -169,29 +123,31 @@ public class ShqipBot extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
         
-        String message = event.getMessage().getContentRaw();
-        if (!message.startsWith("'")) return;
+        String msgContent = event.getMessage().getContentRaw();
+        if (!msgContent.startsWith("'")) return;
         
         long now = System.currentTimeMillis();
-        if (message.equals(lastCommand) && (now - lastCommandTime) < 1000) {
+        if (msgContent.equals(lastCommand) && (now - lastCommandTime) < 1000) {
             return;
         }
-        lastCommand = message;
+        lastCommand = msgContent;
         lastCommandTime = now;
         
         String userId = event.getAuthor().getId();
-        String username = event.getAuthor().getName();
-        String command = message.toLowerCase();
+        String userName = event.getAuthor().getName();
+        String command = msgContent.toLowerCase();
         
-        System.out.println("📨 " + username + ": " + command);
+        System.out.println("📨 " + userName + ": " + command);
         
-        db.krijoPerdorues(userId, username);
+        db.krijoPerdorues(userId, userName);
         
         // ==================== 'work ====================
         if (command.equals("'work")) {
             int index = random.nextInt(punet.length);
             int fitimi = Integer.parseInt(punet[index][2]);
             db.shtoPara(userId, fitimi);
+            db.updateWeeklyEarnings(userId, fitimi);
+            db.updateMonthlyEarnings(userId, fitimi);
             
             EmbedBuilder embed = new EmbedBuilder()
                 .setColor(Color.GREEN)
@@ -200,7 +156,7 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("📝 Përshkrimi", punet[index][1], false)
                 .addField("💰 Fitimi", "+" + fitimi + " lekë", true)
                 .setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
@@ -232,7 +188,7 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("📊 Statusi", status, true)
                 .addField("💰 Rezultati", (shuma > 0 ? "+" : "") + shuma + " lekë", true)
                 .setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
@@ -264,7 +220,7 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("📊 Statusi", status, true)
                 .addField("💰 Rezultati", (shuma > 0 ? "+" : "") + shuma + " lekë", true)
                 .setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
@@ -290,7 +246,7 @@ public class ShqipBot extends ListenerAdapter {
                 return;
             }
             
-            int shuma = random.nextInt(300) + 50;
+            int shuma = random.nextInt(3000) + 500;
             boolean suksesi = random.nextDouble() > 0.4;
             int balanceViktima = db.merrBalance(target.getId());
             
@@ -306,29 +262,32 @@ public class ShqipBot extends ListenerAdapter {
                     .addField("🎯 Viktima", "@" + targetName, true)
                     .addField("📊 Statusi", "✅ SUKSES", true);
             } else {
-                db.zbritPara(userId, 200);
+                db.zbritPara(userId, 2000);
                 embed.setDescription("**" + event.getAuthor().getName() + "** u kap duke grabitur @" + targetName)
-                    .addField("💰 Humbja", "-200 lekë", true)
+                    .addField("💰 Humbja", "-2000 lekë", true)
                     .addField("🚔 Statusi", "❌ DËSHTIM", true);
             }
             
             embed.setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
         // ==================== 'bal ====================
         else if (command.equals("'bal")) {
-            int balance = db.merrBalance(userId);
+            com.shqipbot.User userData = db.merrPerdorues(userId);
             
             EmbedBuilder embed = new EmbedBuilder()
                 .setColor(Color.CYAN)
                 .setTitle("💰 GJENDJA FINANCIARE 💰")
-                .setDescription("**" + event.getAuthor().getName() + "** ka **" + balance + "** lekë në xhep!")
+                .setDescription("**" + event.getAuthor().getName() + "**")
+                .addField("💵 Në xhep", userData.getBalance() + " lekë", true)
+                .addField("🏦 Në bankë", userData.getBank() + " lekë", true)
+                .addField("💳 Gjithsej", (userData.getBalance() + userData.getBank()) + " lekë", true)
                 .addField("📡 Ping", jda.getGatewayPing() + " ms", true)
-                .setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setFooter("ShqipBot © 2026 | Paratë në bankë janë të sigurta!", null)
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
@@ -338,76 +297,171 @@ public class ShqipBot extends ListenerAdapter {
             long depozitaFundit = db.merrDepozitaFundit(userId);
             long tani = System.currentTimeMillis();
             long diferenca = tani - depozitaFundit;
+            long dite = 24 * 60 * 60 * 1000;
+            
+            com.shqipbot.User userData = db.merrPerdorues(userId);
+            int balance = userData.getBalance();
             
             EmbedBuilder embed = new EmbedBuilder()
                 .setColor(Color.YELLOW)
-                .setTitle("🏦 DEPOZITO BONUS DITOR 🏦");
+                .setTitle("🏦 DEPOZITO NË BANKË 🏦");
             
-            if (diferenca < 86400000) {
-                long oreMbetur = (86400000 - diferenca) / 3600000;
-                embed.setDescription("⏳ Ke marrë bonusin sot!")
+            if (diferenca < dite) {
+                long oreMbetur = (dite - diferenca) / (60 * 60 * 1000);
+                embed.setDescription("⏳ Ke marrë bonusin ditor sot!")
                     .addField("⏰ Provo pas", oreMbetur + " orësh", true);
             } else {
-                db.shtoPara(userId, 100);
+                db.shtoBank(userId, 1000);
                 db.updateDepozita(userId, tani);
-                embed.setDescription("🎉 **" + event.getAuthor().getName() + "** depozitoi **100 lekë** bonus ditor!")
+                
+                if (balance > 0) {
+                    db.shtoBank(userId, balance);
+                    db.zbritPara(userId, balance);
+                }
+                
+                com.shqipbot.User updatedUser = db.merrPerdorues(userId);
+                embed.setDescription("🎉 **" + event.getAuthor().getName() + "** depozitoi **" + 
+                        (balance > 0 ? balance + " lekë + " : "") + "1000 lekë** bonus ditor në bankë!")
                     .setColor(Color.GREEN)
-                    .addField("💰 Bonus", "+100 lekë", true);
+                    .addField("💰 Në xhep", updatedUser.getBalance() + " lekë", true)
+                    .addField("🏦 Në bankë", updatedUser.getBank() + " lekë", true)
+                    .addField("💳 Gjithsej", (updatedUser.getBalance() + updatedUser.getBank()) + " lekë", true);
             }
             
-            embed.setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+            embed.setFooter("ShqipBot © 2026 | Bonusi vjen çdo 24 orë!", null)
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
         // ==================== 'with ====================
         else if (command.equals("'with")) {
-            db.zbritPara(userId, 100);
-            int balance = db.merrBalance(userId);
+            com.shqipbot.User userData = db.merrPerdorues(userId);
+            int bank = userData.getBank();
+            
+            if (bank < 1000) {
+                event.getChannel().sendMessage("❌ Nuk ke mjaftueshëm para në bankë! Ke " + bank + " lekë.").queue();
+                return;
+            }
+            
+            int shuma = 1000;
+            db.zbritBank(userId, shuma);
+            db.shtoPara(userId, shuma);
+            
+            com.shqipbot.User updatedUser = db.merrPerdorues(userId);
             
             EmbedBuilder embed = new EmbedBuilder()
                 .setColor(Color.ORANGE)
-                .setTitle("💸 TËRHIQJE PARASH 💸")
-                .setDescription("**" + event.getAuthor().getName() + "** tërhoqi 50 lekë por taksohesh 50 lekë!")
-                .addField("💰 Gjendja e re", balance + " lekë", true)
-                .addField("💸 Takse", "-100 lekë", true)
-                .setFooter("ShqipBot © 2026", null)
-                .setTimestamp(new Date().toInstant());
+                .setTitle("💸 TËRHIQJE NGA BANKA 💸")
+                .setDescription("**" + event.getAuthor().getName() + "** tërhoqi **1000 lekë** nga banka!")
+                .addField("💰 Në xhep", updatedUser.getBalance() + " lekë", true)
+                .addField("🏦 Në bankë", updatedUser.getBank() + " lekë", true)
+                .setFooter("ShqipBot © 2026 | Banka ka gjithmonë para!", null)
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== 'bet ====================
-        else if (command.startsWith("'bet")) {
-            handleBetCommand(event, message, userId, username);
-        }
-        
-        // ==================== 'match ====================
-        else if (command.startsWith("'match") && userId.equals(ADMIN_ID)) {
-            String[] parts = command.split(" ");
-            if (parts.length >= 4) {
-                String team1 = parts[1];
-                String team2 = parts[2];
-                String time = parts[3];
+        // ==================== 'lb ====================
+        else if (command.equals("'lb")) {
+            List<com.shqipbot.User> topUsers = db.getTopBalances();
+            
+            if (topUsers.isEmpty()) {
+                event.getChannel().sendMessage("❌ Nuk ka përdorues në databazë.").queue();
+                return;
+            }
+            
+            StringBuilder msgBuilder = new StringBuilder("🏆 **LEADERBOARD GLOBAL** 🏆\n");
+            msgBuilder.append("(Bazuar në paratë në xhep)\n");
+            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            
+            int rank = 1;
+            for (com.shqipbot.User userData : topUsers) {
+                String medal = "";
+                if (rank == 1) medal = "🥇 ";
+                else if (rank == 2) medal = "🥈 ";
+                else if (rank == 3) medal = "🥉 ";
+                else medal = rank + ". ";
                 
-                if (footballAPI != null) {
-                    String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                    FootballAPI.MatchResult result = footballAPI.getMatchResult(team1, team2, today);
-                    
-                    if (result != null && "FT".equals(result.status)) {
-                        announceWinner(event, result, team1, team2);
-                        return;
-                    } else if (result != null) {
-                        announceMatchReal(event, team1, team2, time);
-                        return;
-                    }
+                String username = userData.getUsername();
+                if (username == null || username.isEmpty()) {
+                    username = "Përdorues i panjohur";
                 }
                 
-                announceMatch(event, team1, team2, time);
-            } else {
-                event.getChannel().sendMessage("❌ Përdorimi: `'match Skuadra1 Skuadra2 20:00`").queue();
+                msgBuilder.append(medal).append("**").append(username).append("** - ")
+                       .append(userData.getBalance()).append(" lekë\n");
+                rank++;
             }
+            
+            event.getChannel().sendMessage(msgBuilder.toString()).queue();
+        }
+        
+        // ==================== 'weekly ====================
+        else if (command.equals("'weekly")) {
+            List<com.shqipbot.User> topUsers = db.getWeeklyTop();
+            
+            if (topUsers.isEmpty()) {
+                event.getChannel().sendMessage("❌ Nuk ka fitime këtë javë.").queue();
+                return;
+            }
+            
+            StringBuilder msgBuilder = new StringBuilder("📅 **LEADERBOARD JAVOR** 📅\n");
+            msgBuilder.append("(Fitimet e kësaj jave)\n");
+            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            
+            int rank = 1;
+            for (com.shqipbot.User userData : topUsers) {
+                String medal = "";
+                if (rank == 1) medal = "🥇 ";
+                else if (rank == 2) medal = "🥈 ";
+                else if (rank == 3) medal = "🥉 ";
+                else medal = rank + ". ";
+                
+                String username = userData.getUsername();
+                if (username == null || username.isEmpty()) {
+                    username = "Përdorues i panjohur";
+                }
+                
+                msgBuilder.append(medal).append("**").append(username).append("** - ")
+                       .append(userData.getBalance()).append(" lekë\n");
+                rank++;
+            }
+            
+            event.getChannel().sendMessage(msgBuilder.toString()).queue();
+        }
+        
+        // ==================== 'monthly ====================
+        else if (command.equals("'monthly")) {
+            List<com.shqipbot.User> topUsers = db.getMonthlyTop();
+            
+            if (topUsers.isEmpty()) {
+                event.getChannel().sendMessage("❌ Nuk ka fitime këtë muaj.").queue();
+                return;
+            }
+            
+            StringBuilder msgBuilder = new StringBuilder("📆 **LEADERBOARD MUJOR** 📆\n");
+            msgBuilder.append("(Fitimet e këtij muaji)\n");
+            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            
+            int rank = 1;
+            for (com.shqipbot.User userData : topUsers) {
+                String medal = "";
+                if (rank == 1) medal = "🥇 ";
+                else if (rank == 2) medal = "🥈 ";
+                else if (rank == 3) medal = "🥉 ";
+                else medal = rank + ". ";
+                
+                String username = userData.getUsername();
+                if (username == null || username.isEmpty()) {
+                    username = "Përdorues i panjohur";
+                }
+                
+                msgBuilder.append(medal).append("**").append(username).append("** - ")
+                       .append(userData.getBalance()).append(" lekë\n");
+                rank++;
+            }
+            
+            event.getChannel().sendMessage(msgBuilder.toString()).queue();
         }
         
         // ==================== /add_money ====================
@@ -417,10 +471,13 @@ public class ShqipBot extends ListenerAdapter {
                 String targetUser = parts[1].substring(1);
                 try {
                     int amount = Integer.parseInt(parts[2]);
+                    db.shtoPara(targetUser, amount);
                     event.getChannel().sendMessage("✅ I shtove @" + targetUser + " " + amount + " lekë.").queue();
                 } catch (NumberFormatException e) {
                     event.getChannel().sendMessage("❌ Shuma duhet të jetë numër!").queue();
                 }
+            } else {
+                event.getChannel().sendMessage("❌ Përdorimi: `/add_money @user 1000`").queue();
             }
         }
         
@@ -434,14 +491,16 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("🍑 **SHËRBIME**", "`'slut` - Shërbime të dyshimta", false)
                 .addField("😈 **KRIM**", "`'crime` - Punë kriminale", false)
                 .addField("🔫 **GRABITJE**", "`'rob @user` - Grabit dikë", false)
-                .addField("💰 **FINANCA**", "`'bal` - Gjendja\n`'dep` - Bonus ditor\n`'with` - Tërhiq", false)
-                .addField("⚽ **BASTE**", 
-                    "`'bet 1 100 Skuadra1` - Bast për fitues Skuadra 1 (2.0x)\n" +
-                    "`'bet 2 100 Skuadra2` - Bast për fitues Skuadra 2 (2.0x)\n" +
-                    "`'bet 3 100 Draw` - Bast për barazim (4.0x)\n" +
-                    "`'match Skuadra1 Skuadra2 20:00` - Krijon ndeshje (Admin)", false)
+                .addField("💰 **FINANCA**", 
+                    "`'bal` - Gjendja\n" +
+                    "`'dep` - Depozito në bankë + bonus ditor\n" +
+                    "`'with` - Tërhiq nga banka", false)
+                .addField("🏆 **LEADERBOARD**", 
+                    "`'lb` - Leaderboard global\n" +
+                    "`'weekly` - Leaderboard javor\n" +
+                    "`'monthly` - Leaderboard mujor", false)
                 .setFooter("ShqipBot © 2026 | Bëhu i pasur në stilin shqiptar!", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
@@ -452,310 +511,14 @@ public class ShqipBot extends ListenerAdapter {
                 .setColor(Color.GREEN)
                 .setTitle("🇦🇱 MIRË SE VJEN NË SHQIPBOT! 🇦🇱")
                 .setDescription("Boti ekonomik **100%** në gjuhën shqipe!")
-                .addField("💰 Fillo me", "**100 lekë** në xhep!", true)
+                .addField("💰 Fillo me", "**1000 lekë** në xhep!", true)
                 .addField("📋 Provo", "`'work`, `'bal`, `'help`", true)
-                .addField("⚽ Bastet", "`'bet 1 100 Skënderbeu`", true)
+                .addField("🏆 Leaderboard", "`'lb`, `'weekly`, `'monthly`", true)
+                .addField("🏦 Banka", "`'dep` - Depozito + bonus ditor", true)
                 .setFooter("ShqipBot © 2026 | Bëhu i pasur!", null)
-                .setTimestamp(new Date().toInstant());
+                .setTimestamp(Instant.now());
             
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
-    }
-    
-    // ==================== HANDLER PËR BASTE ====================
-    private void handleBetCommand(MessageReceivedEvent event, String message, String userId, String username) {
-        String[] parts = message.split(" ");
-        if (parts.length < 4) {
-            event.getChannel().sendMessage("❌ Përdorimi: `'bet 1 100 Skuadra` (1=Fitues Skuadra 1, 2=Fitues Skuadra 2, 3=Barazim)").queue();
-            return;
-        }
-        
-        try {
-            int tipi = Integer.parseInt(parts[1]);
-            int amount = Integer.parseInt(parts[2]);
-            
-            StringBuilder teamName = new StringBuilder();
-            for (int i = 3; i < parts.length; i++) {
-                teamName.append(parts[i]).append(" ");
-            }
-            String team = teamName.toString().trim();
-            
-            if (tipi < 1 || tipi > 3) {
-                event.getChannel().sendMessage("❌ Zgjidh: 1=Fitues Skuadra 1, 2=Fitues Skuadra 2, 3=Barazim").queue();
-                return;
-            }
-            
-            int balance = db.merrBalance(userId);
-            if (amount > balance) {
-                event.getChannel().sendMessage("❌ Nuk ke mjaftueshëm lekë! Ke " + balance + " lekë.").queue();
-                return;
-            }
-            
-            if (amount <= 0) {
-                event.getChannel().sendMessage("❌ Shuma duhet të jetë pozitive!").queue();
-                return;
-            }
-            
-            db.zbritPara(userId, amount);
-            
-            String[] tipet = {"🏆 Fitues Skuadra 1", "🏆 Fitues Skuadra 2", "🤝 Barazim"};
-            double[] koeficientet = {2.0, 2.0, 4.0};
-            
-            EmbedBuilder embed = new EmbedBuilder()
-                .setColor(Color.YELLOW)
-                .setTitle("⚽ BAST FUTBOLLI ⚽")
-                .setDescription("**" + username + "** vendosi një bast!")
-                .addField("💰 Shuma", amount + " lekë", true)
-                .addField("🎯 Lloji", tipet[tipi - 1], true)
-                .addField("⚽ Skuadra", team.toUpperCase(), true)
-                .addField("📊 Koeficienti", koeficientet[tipi - 1] + "x", true)
-                .addField("🏆 Fitimi i mundshëm", (int)(amount * koeficientet[tipi - 1]) + " lekë", true)
-                .setFooter("ShqipBot © 2026 | Fat të mirë!", null)
-                .setTimestamp(new Date().toInstant());
-            
-            String betId = UUID.randomUUID().toString();
-            Bet bet = new Bet(userId, username, team, tipi, amount, koeficientet[tipi - 1], System.currentTimeMillis() + 7200000);
-            bets.put(betId, bet);
-            userBets.computeIfAbsent(userId, k -> new ArrayList<>()).add(bet);
-            
-            event.getChannel().sendMessageEmbeds(embed.build()).queue();
-            
-        } catch (NumberFormatException e) {
-            event.getChannel().sendMessage("❌ Format i gabuar! Përdor: `'bet 1 100 Skënderbeu`").queue();
-        }
-    }
-    
-    // ==================== KLASA BET ====================
-    private class Bet {
-        String userId;
-        String username;
-        String team;
-        int type;
-        int amount;
-        double coefficient;
-        long expiryTime;
-        String betId;
-        boolean isSettled = false;
-        
-        Bet(String userId, String username, String team, int type, int amount, double coefficient, long expiryTime) {
-            this.userId = userId;
-            this.username = username;
-            this.team = team;
-            this.type = type;
-            this.amount = amount;
-            this.coefficient = coefficient;
-            this.expiryTime = expiryTime;
-            this.betId = UUID.randomUUID().toString();
-        }
-    }
-    
-    // ==================== METODA PËR NDESHJE ME API ====================
-    private void announceMatchReal(MessageReceivedEvent event, String team1, String team2, String time) {
-        String announcement = "@everyone 📢 **" + team1.toUpperCase() + "** vs **" + team2.toUpperCase() + "** do të zhvillojnë ndeshjen në **" + time + "** !\n" +
-                             "\n" +
-                             "📡 **Rezultatet nga API-Football!**\n" +
-                             "💰 **Koeficientët:**\n" +
-                             "• Fitues " + team1.toUpperCase() + ": **2.0x**\n" +
-                             "• Fitues " + team2.toUpperCase() + ": **2.0x**\n" +
-                             "• Barazim: **4.0x**\n" +
-                             "\n" +
-                             "💡 **Vë bastet tani!** \n" +
-                             "• `'bet 1 100 " + team1 + "` - Bast për fitues " + team1.toUpperCase() + "\n" +
-                             "• `'bet 2 100 " + team2 + "` - Bast për fitues " + team2.toUpperCase() + "\n" +
-                             "• `'bet 3 100 Draw` - Bast për barazim\n" +
-                             "\n" +
-                             "📢 **Basti mbyllet kur të fillojë ndeshja!**\n" +
-                             "\n" +
-                             "🔍 **Rezultatet reale do të merren nga API-Football!**";
-        
-        event.getChannel().sendMessage(announcement).queue();
-        
-        scheduleResultCheck(event, team1, team2);
-    }
-    
-    private void scheduleResultCheck(MessageReceivedEvent event, String team1, String team2) {
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                FootballAPI.MatchResult result = footballAPI.getMatchResult(team1, team2, today);
-                
-                if (result != null && "FT".equals(result.status)) {
-                    announceWinner(event, result, team1, team2);
-                    this.cancel();
-                }
-            }
-        }, 60000, 300000);
-    }
-    
-    private void announceWinner(MessageReceivedEvent event, FootballAPI.MatchResult result, String team1, String team2) {
-        String resultText = "🏆 **" + result.winner.toUpperCase() + "** fitoi ndeshjen me rezultatin **" + 
-                           result.team1Goals + " - " + result.team2Goals + "**!";
-        
-        String announcement = "@everyone 📢 **Rezultati përfundimtar!**\n" +
-                             resultText + "\n" +
-                             "\n" +
-                             "✅ **Fituesit e basteve janë shpërblyer!**";
-        
-        event.getChannel().sendMessage(announcement).queue();
-        
-        List<String> winners = new ArrayList<>();
-        List<String> losers = new ArrayList<>();
-        
-        for (Map.Entry<String, Bet> entry : bets.entrySet()) {
-            Bet bet = entry.getValue();
-            
-            if (!bet.isSettled) {
-                boolean won = false;
-                
-                if (result.winnerType == 1 && bet.type == 1 && bet.team.equalsIgnoreCase(team1)) {
-                    won = true;
-                } else if (result.winnerType == 2 && bet.type == 2 && bet.team.equalsIgnoreCase(team2)) {
-                    won = true;
-                } else if (result.winnerType == 3 && bet.type == 3) {
-                    won = true;
-                }
-                
-                if (won) {
-                    int winAmount = (int)(bet.amount * bet.coefficient);
-                    db.shtoPara(bet.userId, winAmount);
-                    bet.isSettled = true;
-                    winners.add("🎉 **" + bet.username + "** fitoi **" + winAmount + "** lekë!");
-                } else {
-                    bet.isSettled = true;
-                    losers.add("😢 **" + bet.username + "** humbi **" + bet.amount + "** lekë.");
-                }
-            }
-        }
-        
-        StringBuilder finalMessage = new StringBuilder("@everyone 📊 **Përfundimi i basteve!**\n\n");
-        
-        if (!winners.isEmpty()) {
-            finalMessage.append("🎉 **FITUESIT:**\n");
-            for (String w : winners) {
-                finalMessage.append(w).append("\n");
-            }
-        }
-        
-        if (!losers.isEmpty()) {
-            finalMessage.append("\n😢 **HUMBËSIT:**\n");
-            for (String l : losers) {
-                finalMessage.append(l).append("\n");
-            }
-        }
-        
-        if (winners.isEmpty() && losers.isEmpty()) {
-            finalMessage.append("❌ Nuk kishte baste për këtë ndeshje.");
-        }
-        
-        event.getChannel().sendMessage(finalMessage.toString()).queue();
-        
-        bets.clear();
-        userBets.clear();
-    }
-    
-    // ==================== METODA PËR NDESHJE PA API (RASTËSORE) ====================
-    private void announceMatch(MessageReceivedEvent event, String team1, String team2, String time) {
-        String announcement = "@everyone 📢 **" + team1.toUpperCase() + "** vs **" + team2.toUpperCase() + "** do të zhvillojnë ndeshjen në **" + time + "** !\n" +
-                             "\n" +
-                             "💰 **Koeficientët:**\n" +
-                             "• Fitues " + team1.toUpperCase() + ": **2.0x**\n" +
-                             "• Fitues " + team2.toUpperCase() + ": **2.0x**\n" +
-                             "• Barazim: **4.0x**\n" +
-                             "\n" +
-                             "💡 **Vë bastet tani!** \n" +
-                             "• `'bet 1 100 " + team1 + "` - Bast për fitues " + team1.toUpperCase() + "\n" +
-                             "• `'bet 2 100 " + team2 + "` - Bast për fitues " + team2.toUpperCase() + "\n" +
-                             "• `'bet 3 100 Draw` - Bast për barazim\n" +
-                             "\n" +
-                             "📢 **Basti mbyllet pas 2 orësh!**";
-        
-        event.getChannel().sendMessage(announcement).queue();
-        
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                int result = random.nextInt(3);
-                String resultText;
-                String winnerName;
-                int winnerType;
-                
-                if (result == 0) {
-                    resultText = "🏆 **" + team1.toUpperCase() + "** fitoi ndeshjen!";
-                    winnerName = team1;
-                    winnerType = 1;
-                } else if (result == 1) {
-                    resultText = "🏆 **" + team2.toUpperCase() + "** fitoi ndeshjen!";
-                    winnerName = team2;
-                    winnerType = 2;
-                } else {
-                    resultText = "🤝 Ndeshja përfundoi **BARAZIM**!";
-                    winnerName = "Draw";
-                    winnerType = 3;
-                }
-                
-                String resultAnnouncement = "@everyone 📢 **Rezultati përfundimtar!**\n" +
-                                            resultText + "\n" +
-                                            "\n" +
-                                            "✅ **Fituesit e basteve janë shpërblyer!**";
-                
-                event.getChannel().sendMessage(resultAnnouncement).queue();
-                
-                List<String> winners = new ArrayList<>();
-                List<String> losers = new ArrayList<>();
-                
-                for (Map.Entry<String, Bet> entry : bets.entrySet()) {
-                    Bet bet = entry.getValue();
-                    
-                    if (!bet.isSettled) {
-                        boolean won = false;
-                        
-                        if (winnerType == 1 && bet.type == 1 && bet.team.equalsIgnoreCase(team1)) {
-                            won = true;
-                        } else if (winnerType == 2 && bet.type == 2 && bet.team.equalsIgnoreCase(team2)) {
-                            won = true;
-                        } else if (winnerType == 3 && bet.type == 3) {
-                            won = true;
-                        }
-                        
-                        if (won) {
-                            int winAmount = (int)(bet.amount * bet.coefficient);
-                            db.shtoPara(bet.userId, winAmount);
-                            bet.isSettled = true;
-                            winners.add("🎉 **" + bet.username + "** fitoi **" + winAmount + "** lekë!");
-                        } else {
-                            bet.isSettled = true;
-                            losers.add("😢 **" + bet.username + "** humbi **" + bet.amount + "** lekë.");
-                        }
-                    }
-                }
-                
-                StringBuilder finalMessage = new StringBuilder("@everyone 📊 **Përfundimi i basteve!**\n\n");
-                
-                if (!winners.isEmpty()) {
-                    finalMessage.append("🎉 **FITUESIT:**\n");
-                    for (String w : winners) {
-                        finalMessage.append(w).append("\n");
-                    }
-                }
-                
-                if (!losers.isEmpty()) {
-                    finalMessage.append("\n😢 **HUMBËSIT:**\n");
-                    for (String l : losers) {
-                        finalMessage.append(l).append("\n");
-                    }
-                }
-                
-                if (winners.isEmpty() && losers.isEmpty()) {
-                    finalMessage.append("❌ Nuk kishte baste për këtë ndeshje.");
-                }
-                
-                event.getChannel().sendMessage(finalMessage.toString()).queue();
-                
-                bets.clear();
-                userBets.clear();
-            }
-        }, 7200000);
     }
 }
