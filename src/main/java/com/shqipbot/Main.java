@@ -1,52 +1,53 @@
 package com.shqipbot;
 
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.io.OutputStream;
+
 public class Main {
     public static void main(String[] args) {
         System.out.println("╔════════════════════════════════════════════════════════════╗");
         System.out.println("║                    🇦🇱 S H Q I P B O T 🇦🇱                  ║");
         System.out.println("║              Boti Ekonomik Shqiptar për Discord            ║");
-        System.out.println("║                   Botërori 2026 - Live                     ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
         System.out.println();
         
-        // 🔥 Lexo token-in nga variablat e mjedisit (Railway) ose System properties (NetBeans)
-        String botToken = System.getenv("DISCORD_TOKEN");
-        
-        // 🔥 Nëse nuk u gjet në mjedis, provo System property (për NetBeans)
-        if (botToken == null || botToken.isEmpty()) {
-            botToken = System.getProperty("DISCORD_TOKEN");
+        // 🔥 Server HTTP për healthcheck (i duhet Cloud Run)
+        try {
+            HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            server.createContext("/", exchange -> {
+                String response = "OK";
+                exchange.sendResponseHeaders(200, response.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes());
+                os.close();
+            });
+            server.setExecutor(null);
+            server.start();
+            System.out.println("✅ Healthcheck server started on port 8080");
+        } catch (Exception e) {
+            System.out.println("⚠️ Healthcheck server not started: " + e.getMessage());
         }
         
+        // 🔥 Lexo token-in
+        String botToken = System.getenv("DISCORD_TOKEN");
         if (botToken == null || botToken.isEmpty()) {
             System.err.println("❌ Gabim: DISCORD_TOKEN nuk u gjet!");
-            System.err.println();
-            System.err.println("💡 Për NetBeans: Run → Set Project Configuration → VM Options:");
-            System.err.println("   -DDISCORD_TOKEN=tokeni_yt");
-            System.err.println("   -DFOOTBALL_API_KEY=");
-            System.err.println();
-            System.err.println("💡 Për Railway: Shto variablat:");
-            System.err.println("   DISCORD_TOKEN=tokeni_yt");
-            System.err.println("   FOOTBALL_API_KEY=2c737cdebf61441c9fff2d");
+            System.err.println("Shto variablin DISCORD_TOKEN në Google Cloud Run.");
             return;
         }
         
-        System.out.println("✅ Token-i u lexua nga variabli i mjedisit!");
+        System.out.println("✅ Token-i u lexua!");
         System.out.println("🚀 Duke nisur ShqipBot-in...");
         
         try {
             ShqipBot bot = new ShqipBot(botToken);
             System.out.println("✅ ShqipBot është gati dhe po punon 24/7!");
-            System.out.println("🌍 Botërori 2026 - Ndeshjet live nga API-Football");
-            System.out.println("💡 Komandat: 'work, 'bal, 'help, 'worldcup, 'match");
             
-            // 🔥 KJO E MBAN BOT-IN GJALLË
+            // 🔥 E mban bot-in gjallë
             while (true) {
-                try {
-                    Thread.sleep(60000);
-                    System.out.println("💓 ShqipBot është gjallë...");
-                } catch (InterruptedException e) {
-                    System.out.println("⚠️ Thread u ndërpre, por bot-i vazhdon...");
-                }
+                Thread.sleep(60000);
+                System.out.println("💓 ShqipBot është gjallë...");
             }
         } catch (Exception e) {
             System.err.println("❌ Gabim: " + e.getMessage());
