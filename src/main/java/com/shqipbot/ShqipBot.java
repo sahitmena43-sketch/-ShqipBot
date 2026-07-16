@@ -20,6 +20,9 @@ public class ShqipBot extends ListenerAdapter {
     private String lastCommand = "";
     private long lastCommandTime = 0;
     
+    // 🔥 Set për të mbajtur ID-të e mesazheve të përpunuara
+    private Set<String> processedMessages = new HashSet<>();
+    
     private final String ADMIN_ID = "781121784526929950";
     
     // ==================== 20 PUNË ====================
@@ -122,6 +125,16 @@ public class ShqipBot extends ListenerAdapter {
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
+        
+        // 🔥 Parandalon përpunimin e dyfishtë të të njëjtit mesazh
+        String messageId = event.getMessageId();
+        if (processedMessages.contains(messageId)) return;
+        processedMessages.add(messageId);
+        
+        // Pastro set-in herë pas here
+        if (processedMessages.size() > 1000) {
+            processedMessages.clear();
+        }
         
         String msgContent = event.getMessage().getContentRaw();
         if (!msgContent.startsWith("'")) return;
@@ -362,41 +375,48 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== 'lb ====================
-        else if (command.equals("'lb")) {
-            List<com.shqipbot.User> topUsers = db.getTopBalances();
-            
+           // ==================== 'lb - Leaderboard Global ====================
+            else if (command.equals("'lb")) {
+             List<com.shqipbot.User> topUsers = db.getTopBalances();
+    
             if (topUsers.isEmpty()) {
-                event.getChannel().sendMessage("❌ Nuk ka përdorues në databazë.").queue();
-                return;
-            }
-            
-            StringBuilder msgBuilder = new StringBuilder("🏆 **LEADERBOARD GLOBAL** 🏆\n");
-            msgBuilder.append("(Bazuar në paratë në xhep)\n");
-            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
-            
-            int rank = 1;
-            for (com.shqipbot.User userData : topUsers) {
-                String medal = "";
-                if (rank == 1) medal = "🥇 ";
-                else if (rank == 2) medal = "🥈 ";
-                else if (rank == 3) medal = "🥉 ";
-                else medal = rank + ". ";
-                
-                String username = userData.getUsername();
-                if (username == null || username.isEmpty()) {
-                    username = "Përdorues i panjohur";
-                }
-                
-                msgBuilder.append(medal).append("**").append(username).append("** - ")
-                       .append(userData.getBalance()).append(" lekë\n");
-                rank++;
-            }
-            
-            event.getChannel().sendMessage(msgBuilder.toString()).queue();
+           event.getChannel().sendMessage("❌ Nuk ka përdorues në databazë.").queue();
+          return;
+       }
+    
+           // Shpërblej fituesin e parë me 1000 lekë
+           com.shqipbot.User firstPlace = topUsers.get(0);
+           db.shtoPara(firstPlace.getId(), 1000);
+    
+         EmbedBuilder embed = new EmbedBuilder()
+        .setColor(new Color(255, 215, 0))  // 🔥 Ngjyrë ari
+        .setTitle("🏆 LEADERBOARD GLOBAL 🏆")
+        .setDescription("Bazuar në paratë në xhep")
+        .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
+    
+           int rank = 1;
+          for (com.shqipbot.User userData : topUsers) {
+          String medal = "";
+          if (rank == 1) medal = "🥇 ";
+          else if (rank == 2) medal = "🥈 ";
+          else if (rank == 3) medal = "🥉 ";
+          else medal = rank + ". ";
+        
+          String username = userData.getUsername();
+          if (username == null || username.isEmpty()) {
+            username = "Përdorues i panjohur";
         }
         
-        // ==================== 'weekly ====================
+        embed.addField(medal + username, userData.getBalance() + " lekë", false);
+        rank++;
+    }
+    
+    embed.setFooter("🎉 " + firstPlace.getUsername() + " fitoi 1000 lekë bonus për vendin e parë!", null)
+        .setTimestamp(Instant.now());
+    
+    event.getChannel().sendMessageEmbeds(embed.build()).queue();
+}
+        // ==================== 'weekly - Leaderboard Javor ====================
         else if (command.equals("'weekly")) {
             List<com.shqipbot.User> topUsers = db.getWeeklyTop();
             
@@ -405,9 +425,15 @@ public class ShqipBot extends ListenerAdapter {
                 return;
             }
             
-            StringBuilder msgBuilder = new StringBuilder("📅 **LEADERBOARD JAVOR** 📅\n");
-            msgBuilder.append("(Fitimet e kësaj jave)\n");
-            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            // 🔥 Shpërblej fituesin e parë me 1000 lekë
+            com.shqipbot.User firstPlace = topUsers.get(0);
+            db.shtoPara(firstPlace.getId(), 1000);
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.GREEN)
+                .setTitle("📅 LEADERBOARD JAVOR 📅")
+                .setDescription("Fitimet e kësaj jave")
+                .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
             
             int rank = 1;
             for (com.shqipbot.User userData : topUsers) {
@@ -422,15 +448,17 @@ public class ShqipBot extends ListenerAdapter {
                     username = "Përdorues i panjohur";
                 }
                 
-                msgBuilder.append(medal).append("**").append(username).append("** - ")
-                       .append(userData.getBalance()).append(" lekë\n");
+                embed.addField(medal + username, userData.getBalance() + " lekë", false);
                 rank++;
             }
             
-            event.getChannel().sendMessage(msgBuilder.toString()).queue();
+            embed.setFooter("🎉 " + firstPlace.getUsername() + " fitoi 1000 lekë bonus për vendin e parë!", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== 'monthly ====================
+        // ==================== 'monthly - Leaderboard Mujor ====================
         else if (command.equals("'monthly")) {
             List<com.shqipbot.User> topUsers = db.getMonthlyTop();
             
@@ -439,9 +467,15 @@ public class ShqipBot extends ListenerAdapter {
                 return;
             }
             
-            StringBuilder msgBuilder = new StringBuilder("📆 **LEADERBOARD MUJOR** 📆\n");
-            msgBuilder.append("(Fitimet e këtij muaji)\n");
-            msgBuilder.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            // 🔥 Shpërblej fituesin e parë me 1000 lekë
+            com.shqipbot.User firstPlace = topUsers.get(0);
+            db.shtoPara(firstPlace.getId(), 1000);
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.BLUE)
+                .setTitle("📆 LEADERBOARD MUJOR 📆")
+                .setDescription("Fitimet e këtij muaji")
+                .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
             
             int rank = 1;
             for (com.shqipbot.User userData : topUsers) {
@@ -456,12 +490,14 @@ public class ShqipBot extends ListenerAdapter {
                     username = "Përdorues i panjohur";
                 }
                 
-                msgBuilder.append(medal).append("**").append(username).append("** - ")
-                       .append(userData.getBalance()).append(" lekë\n");
+                embed.addField(medal + username, userData.getBalance() + " lekë", false);
                 rank++;
             }
             
-            event.getChannel().sendMessage(msgBuilder.toString()).queue();
+            embed.setFooter("🎉 " + firstPlace.getUsername() + " fitoi 1000 lekë bonus për vendin e parë!", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
         // ==================== /add_money ====================
