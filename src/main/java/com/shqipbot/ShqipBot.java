@@ -19,11 +19,7 @@ public class ShqipBot extends ListenerAdapter {
     private JDA jda;
     private String lastCommand = "";
     private long lastCommandTime = 0;
-    
-    // 🔥 Set për të mbajtur ID-të e mesazheve të përpunuara
     private Set<String> processedMessages = new HashSet<>();
-    
-    private final String ADMIN_ID = "781121784526929950";
     
     // ==================== 20 PUNË ====================
     private final String[][] punet = {
@@ -103,6 +99,17 @@ public class ShqipBot extends ListenerAdapter {
         {"Vodhe makinë por ishte e policisë", "-5500"}
     };
     
+    // ==================== ITEM SHOP ====================
+    private final String[][] shopItems = {
+        {"👑 VIP Personalizuar 1 Javë", "15000", "Rol VIP i personalizuar për 1 javë (zgjidh emrin)", "7", "VIP"},
+        {"👑 VIP Personalizuar 1 Muaj", "50000", "Rol VIP i personalizuar për 1 muaj (zgjidh emrin)", "30", "VIP"},
+        {"👑 VIP Personalizuar Përgjithmonë", "150000", "Rol VIP i personalizuar i përhershëm (zgjidh emrin)", "0", "VIP"},
+        {"🛡️ Mbrojtës", "5000", "Të mbron nga grabistjet përgjithmonë", "0", "ITEM"},
+        {"⚡ Boost", "10000", "Dyfishon fitimet nga 'work për 1 orë", "0", "ITEM"},
+        {"👑 Admin 1 Muaj", "100000", "Rol Admin për 1 muaj (komanda admin)", "30", "ADMIN"},
+        {"👑 Admin Përgjithmonë", "300000", "Rol Admin i përhershëm (komanda admin)", "0", "ADMIN"},
+    };
+    
     // ==================== KONSTRUKTORI ====================
     public ShqipBot(String token) throws Exception {
         this.db = new Database();
@@ -115,6 +122,7 @@ public class ShqipBot extends ListenerAdapter {
                 GatewayIntent.MESSAGE_CONTENT)
                 .setActivity(Activity.playing("'work për lekë 🇦🇱 | ShqipBot"))
                 .addEventListeners(this)
+                .setEnableShutdownHook(false)
                 .build();
         
         jda.awaitReady();
@@ -126,18 +134,13 @@ public class ShqipBot extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
         
-        // 🔥 Parandalon përpunimin e dyfishtë të të njëjtit mesazh
         String messageId = event.getMessageId();
         if (processedMessages.contains(messageId)) return;
         processedMessages.add(messageId);
-        
-        // Pastro set-in herë pas here
-        if (processedMessages.size() > 1000) {
-            processedMessages.clear();
-        }
+        if (processedMessages.size() > 1000) processedMessages.clear();
         
         String msgContent = event.getMessage().getContentRaw();
-        if (!msgContent.startsWith("'")) return;
+        if (!msgContent.startsWith("'") && !msgContent.startsWith("/")) return;
         
         long now = System.currentTimeMillis();
         if (msgContent.equals(lastCommand) && (now - lastCommandTime) < 1000) {
@@ -375,48 +378,48 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-           // ==================== 'lb - Leaderboard Global ====================
-            else if (command.equals("'lb")) {
-             List<com.shqipbot.User> topUsers = db.getTopBalances();
-    
+        // ==================== 'lb ====================
+        else if (command.equals("'lb")) {
+            List<com.shqipbot.User> topUsers = db.getTopBalances();
+            
             if (topUsers.isEmpty()) {
-           event.getChannel().sendMessage("❌ Nuk ka përdorues në databazë.").queue();
-          return;
-       }
-    
-           // Shpërblej fituesin e parë me 1000 lekë
-           com.shqipbot.User firstPlace = topUsers.get(0);
-           db.shtoPara(firstPlace.getId(), 1000);
-    
-         EmbedBuilder embed = new EmbedBuilder()
-        .setColor(new Color(255, 215, 0))  // 🔥 Ngjyrë ari
-        .setTitle("🏆 LEADERBOARD GLOBAL 🏆")
-        .setDescription("Bazuar në paratë në xhep")
-        .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
-    
-           int rank = 1;
-          for (com.shqipbot.User userData : topUsers) {
-          String medal = "";
-          if (rank == 1) medal = "🥇 ";
-          else if (rank == 2) medal = "🥈 ";
-          else if (rank == 3) medal = "🥉 ";
-          else medal = rank + ". ";
-        
-          String username = userData.getUsername();
-          if (username == null || username.isEmpty()) {
-            username = "Përdorues i panjohur";
+                event.getChannel().sendMessage("❌ Nuk ka përdorues në databazë.").queue();
+                return;
+            }
+            
+            com.shqipbot.User firstPlace = topUsers.get(0);
+            db.shtoPara(firstPlace.getId(), 1000);
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(new Color(255, 215, 0))
+                .setTitle("🏆 LEADERBOARD GLOBAL 🏆")
+                .setDescription("Bazuar në paratë në xhep")
+                .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
+            
+            int rank = 1;
+            for (com.shqipbot.User userData : topUsers) {
+                String medal = "";
+                if (rank == 1) medal = "🥇 ";
+                else if (rank == 2) medal = "🥈 ";
+                else if (rank == 3) medal = "🥉 ";
+                else medal = rank + ". ";
+                
+                String username = userData.getUsername();
+                if (username == null || username.isEmpty()) {
+                    username = "Përdorues i panjohur";
+                }
+                
+                embed.addField(medal + username, userData.getBalance() + " lekë", false);
+                rank++;
+            }
+            
+            embed.setFooter("🎉 " + firstPlace.getUsername() + " fitoi 1000 lekë bonus për vendin e parë!", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        embed.addField(medal + username, userData.getBalance() + " lekë", false);
-        rank++;
-    }
-    
-    embed.setFooter("🎉 " + firstPlace.getUsername() + " fitoi 1000 lekë bonus për vendin e parë!", null)
-        .setTimestamp(Instant.now());
-    
-    event.getChannel().sendMessageEmbeds(embed.build()).queue();
-}
-        // ==================== 'weekly - Leaderboard Javor ====================
+        // ==================== 'weekly ====================
         else if (command.equals("'weekly")) {
             List<com.shqipbot.User> topUsers = db.getWeeklyTop();
             
@@ -425,7 +428,6 @@ public class ShqipBot extends ListenerAdapter {
                 return;
             }
             
-            // 🔥 Shpërblej fituesin e parë me 1000 lekë
             com.shqipbot.User firstPlace = topUsers.get(0);
             db.shtoPara(firstPlace.getId(), 1000);
             
@@ -458,7 +460,7 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== 'monthly - Leaderboard Mujor ====================
+        // ==================== 'monthly ====================
         else if (command.equals("'monthly")) {
             List<com.shqipbot.User> topUsers = db.getMonthlyTop();
             
@@ -467,7 +469,6 @@ public class ShqipBot extends ListenerAdapter {
                 return;
             }
             
-            // 🔥 Shpërblej fituesin e parë me 1000 lekë
             com.shqipbot.User firstPlace = topUsers.get(0);
             db.shtoPara(firstPlace.getId(), 1000);
             
@@ -500,8 +501,229 @@ public class ShqipBot extends ListenerAdapter {
             event.getChannel().sendMessageEmbeds(embed.build()).queue();
         }
         
-        // ==================== /add_money ====================
-        else if (command.startsWith("/add_money") && userId.equals(ADMIN_ID)) {
+        // ==================== 'shop ====================
+        else if (command.equals("'shop")) {
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(new Color(255, 215, 0))
+                .setTitle("🛒 DYQANI I SHQIPBOT 🛒")
+                .setDescription("Bli artikuj dhe role me paratë që ke fituar!")
+                .setThumbnail("https://cdn-icons-png.flaticon.com/512/3135/3135715.png");
+            
+            for (String[] item : shopItems) {
+                String durationText = "";
+                if (item[3].equals("0")) {
+                    durationText = "♾️ Përgjithmonë";
+                } else if (item[3].equals("1")) {
+                    durationText = "📆 1 ditë";
+                } else if (item[3].equals("7")) {
+                    durationText = "📆 1 javë";
+                } else if (item[3].equals("30")) {
+                    durationText = "📆 1 muaj";
+                }
+                
+                embed.addField(
+                    item[0] + " - " + item[1] + " lekë",
+                    item[2] + (durationText.isEmpty() ? "" : "\n⏳ " + durationText),
+                    false
+                );
+            }
+            
+            embed.setFooter("Përdor: 'buy <emri> për të blerë", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+        }
+        
+        // ==================== 'buy ====================
+        else if (command.startsWith("'buy")) {
+            String itemName = command.substring(5).trim();
+            
+            String foundItem = null;
+            String foundPrice = null;
+            String foundDesc = null;
+            String foundDuration = null;
+            String foundType = null;
+            
+            for (String[] item : shopItems) {
+                if (item[0].equalsIgnoreCase(itemName) || item[0].toLowerCase().contains(itemName.toLowerCase())) {
+                    foundItem = item[0];
+                    foundPrice = item[1];
+                    foundDesc = item[2];
+                    foundDuration = item[3];
+                    foundType = item[4];
+                    break;
+                }
+            }
+            
+            if (foundItem == null) {
+                event.getChannel().sendMessage("❌ Artikulli nuk u gjet! Shiko `'shop` për listën.").queue();
+                return;
+            }
+            
+            int price = Integer.parseInt(foundPrice);
+            int balance = db.merrBalance(userId);
+            
+            if (balance < price) {
+                event.getChannel().sendMessage("❌ Nuk ke mjaftueshëm para! Ke " + balance + " lekë, por artikulli kushton " + price + " lekë.").queue();
+                return;
+            }
+            
+            db.zbritPara(userId, price);
+            
+            // 🔥 VIP Personalizuar
+            if ("VIP".equals(foundType)) {
+                String customRoleName = event.getAuthor().getName() + "'s VIP";
+                
+                long expiresAt = 0;
+                String durationText = "";
+                
+                if (foundItem.contains("1 Javë")) {
+                    expiresAt = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L);
+                    durationText = "1 javë";
+                } else if (foundItem.contains("1 Muaj")) {
+                    expiresAt = System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000L);
+                    durationText = "1 muaj";
+                } else if (foundItem.contains("Përgjithmonë")) {
+                    expiresAt = Long.MAX_VALUE;
+                    durationText = "përgjithmonë";
+                }
+                
+                db.addPurchasedRole(userId, "VIP", customRoleName, "VIP_ROLE", expiresAt, durationText);
+                
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setColor(Color.YELLOW)
+                    .setTitle("👑 BLERJE VIP E PERSONALIZUAR")
+                    .setDescription("**" + event.getAuthor().getName() + "** bleu një rol VIP!")
+                    .addField("📝 Emri i rolit", customRoleName, false)
+                    .addField("⏳ Kohëzgjatja", durationText, false)
+                    .addField("📢 Statusi", "⏳ **Në pritje të miratimit nga staffi**", false)
+                    .setFooter("ShqipBot © 2026", null)
+                    .setTimestamp(Instant.now());
+                
+                event.getChannel().sendMessageEmbeds(embed.build()).queue();
+            }
+            // 🔥 Admin
+            else if ("ADMIN".equals(foundType)) {
+                long expiresAt = 0;
+                String durationText = "";
+                
+                if (foundItem.contains("1 Muaj")) {
+                    expiresAt = System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000L);
+                    durationText = "1 muaj";
+                } else if (foundItem.contains("Përgjithmonë")) {
+                    expiresAt = Long.MAX_VALUE;
+                    durationText = "përgjithmonë";
+                }
+                
+                db.addAdmin(userId, expiresAt);
+                
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setColor(new Color(255, 215, 0))
+                    .setTitle("👑 BLERJE ADMIN")
+                    .setDescription("**" + event.getAuthor().getName() + "** bleu rolin **Admin**!")
+                    .addField("⏳ Kohëzgjatja", durationText, false)
+                    .setFooter("ShqipBot © 2026", null)
+                    .setTimestamp(Instant.now());
+                
+                event.getChannel().sendMessageEmbeds(embed.build()).queue();
+            }
+            // 🔥 Artikuj të tjerë
+            else {
+                db.addItem(userId, foundItem);
+                
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setColor(Color.GREEN)
+                    .setTitle("✅ BLERJE E SUKSESSHME")
+                    .setDescription("**" + event.getAuthor().getName() + "** bleu **" + foundItem + "**!")
+                    .addField("💰 Çmimi", "-" + price + " lekë", true)
+                    .addField("📦 Artikulli", foundItem, true)
+                    .setFooter("ShqipBot © 2026", null)
+                    .setTimestamp(Instant.now());
+                
+                event.getChannel().sendMessageEmbeds(embed.build()).queue();
+            }
+        }
+        
+        // ==================== 'inventory ====================
+        else if (command.equals("'inventory")) {
+            List<String> items = db.getInventory(userId);
+            List<String> roles = db.getActiveRoles(userId);
+            
+            if (items.isEmpty() && roles.isEmpty()) {
+                event.getChannel().sendMessage("📦 **" + event.getAuthor().getName() + "** nuk ka asgjë në inventar.").queue();
+                return;
+            }
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.CYAN)
+                .setTitle("📦 INVENTARI I " + event.getAuthor().getName().toUpperCase())
+                .setDescription("Artikujt dhe rolet që ke blerë:");
+            
+            if (!roles.isEmpty()) {
+                embed.addField("👑 **ROLET AKTIVE**", "", false);
+                for (String role : roles) {
+                    embed.addField("• " + role, "✅ Aktiv", false);
+                }
+            }
+            
+            if (!items.isEmpty()) {
+                embed.addField("📦 **ARTIKUJT**", "", false);
+                for (String item : items) {
+                    embed.addField("• " + item, "✅ Në inventar", false);
+                }
+            }
+            
+            embed.setFooter("ShqipBot © 2026", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+        }
+        
+        // ==================== 'myroles ====================
+        else if (command.equals("'myroles")) {
+            List<String> roles = db.getActiveRoles(userId);
+            
+            if (roles.isEmpty()) {
+                event.getChannel().sendMessage("👑 **" + event.getAuthor().getName() + "** nuk ka asnjë rol aktiv.").queue();
+                return;
+            }
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.MAGENTA)
+                .setTitle("👑 ROLET E " + event.getAuthor().getName().toUpperCase())
+                .setDescription("Rolet që ke blerë dhe janë aktive:");
+            
+            for (String role : roles) {
+                embed.addField("• " + role, "✅ Aktiv", false);
+            }
+            
+            embed.setFooter("ShqipBot © 2026", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+        }
+        
+        // ==================== 'announce (Admin) ====================
+        else if (command.startsWith("'announce") && db.isAdmin(userId)) {
+            String messageToAnnounce = command.substring(10).trim();
+            
+            if (messageToAnnounce.isEmpty()) {
+                event.getChannel().sendMessage("❌ Përdorimi: `'announce <mesazhi>`").queue();
+                return;
+            }
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.YELLOW)
+                .setTitle("📢 SHQIPBOT - SHPALLJE ADMINI 📢")
+                .setDescription(messageToAnnounce)
+                .setFooter("ShqipBot © 2026", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+        }
+        
+        // ==================== /add_money (Admin) ====================
+        else if (command.startsWith("/add_money") && db.isAdmin(userId)) {
             String[] parts = command.split(" ");
             if (parts.length == 3 && parts[1].startsWith("@")) {
                 String targetUser = parts[1].substring(1);
@@ -515,6 +737,55 @@ public class ShqipBot extends ListenerAdapter {
             } else {
                 event.getChannel().sendMessage("❌ Përdorimi: `/add_money @user 1000`").queue();
             }
+        }
+        
+        // ==================== 'pending (Admin) ====================
+        else if (command.equals("'pending") && db.isAdmin(userId)) {
+            List<Map<String, String>> pending = db.getPendingRoles();
+            
+            if (pending.isEmpty()) {
+                event.getChannel().sendMessage("📝 Nuk ka role në pritje për miratim.").queue();
+                return;
+            }
+            
+            EmbedBuilder embed = new EmbedBuilder()
+                .setColor(Color.YELLOW)
+                .setTitle("📝 ROLET NË PRITJE")
+                .setDescription("Këto role presin miratimin e staffit:");
+            
+            for (Map<String, String> role : pending) {
+                embed.addField(
+                    "👤 " + role.get("user_id"),
+                    "📝 Roli: " + role.get("custom_role_name") + "\n⏳ " + role.get("duration"),
+                    false
+                );
+            }
+            
+            embed.setFooter("Përdor: 'approve @user për të miratuar", null)
+                .setTimestamp(Instant.now());
+            
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+        }
+        
+        // ==================== 'approve (Admin) ====================
+        else if (command.startsWith("'approve") && db.isAdmin(userId)) {
+            String[] parts = command.split(" ");
+            if (parts.length < 2 || !parts[1].startsWith("@")) {
+                event.getChannel().sendMessage("❌ Përdorimi: `'approve @user`").queue();
+                return;
+            }
+            
+            String targetUser = parts[1].substring(1);
+            com.shqipbot.User target = db.merrPerdoruesNgaUsername(targetUser);
+            
+            if (target == null) {
+                event.getChannel().sendMessage("❌ Përdoruesi nuk u gjet.").queue();
+                return;
+            }
+            
+            db.approveRole(target.getId(), target.getUsername() + "'s VIP");
+            
+            event.getChannel().sendMessage("✅ Roli VIP i @" + targetUser + " u miratua!").queue();
         }
         
         // ==================== 'help ====================
@@ -535,6 +806,16 @@ public class ShqipBot extends ListenerAdapter {
                     "`'lb` - Leaderboard global\n" +
                     "`'weekly` - Leaderboard javor\n" +
                     "`'monthly` - Leaderboard mujor", false)
+                .addField("🛒 **DYQANI**", 
+                    "`'shop` - Shfaq dyqanin\n" +
+                    "`'buy <emri>` - Blen një artikull\n" +
+                    "`'inventory` - Inventari\n" +
+                    "`'myroles` - Rolet aktive", false)
+                .addField("👑 **ADMIN**", 
+                    "`'announce <mesazhi>` - Shpallje\n" +
+                    "`/add_money @user amount` - Shton lekë\n" +
+                    "`'pending` - Role në pritje\n" +
+                    "`'approve @user` - Miraton role", false)
                 .setFooter("ShqipBot © 2026 | Bëhu i pasur në stilin shqiptar!", null)
                 .setTimestamp(Instant.now());
             
@@ -550,7 +831,7 @@ public class ShqipBot extends ListenerAdapter {
                 .addField("💰 Fillo me", "**1000 lekë** në xhep!", true)
                 .addField("📋 Provo", "`'work`, `'bal`, `'help`", true)
                 .addField("🏆 Leaderboard", "`'lb`, `'weekly`, `'monthly`", true)
-                .addField("🏦 Banka", "`'dep` - Depozito + bonus ditor", true)
+                .addField("🛒 Dyqani", "`'shop`, `'buy`, `'inventory`", true)
                 .setFooter("ShqipBot © 2026 | Bëhu i pasur!", null)
                 .setTimestamp(Instant.now());
             
