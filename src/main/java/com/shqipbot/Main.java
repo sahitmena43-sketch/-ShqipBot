@@ -44,7 +44,7 @@ public class Main {
             ShqipBot bot = new ShqipBot(botToken);
             System.out.println("✅ ShqipBot është gati dhe po punon 24/7!");
             
-            // 🔥 E mban bot-in gjallë
+            // 🔥 KJO E MBAN BOT-IN GJALLË (LOOPI I PAFUND)
             while (true) {
                 Thread.sleep(60000);
                 System.out.println("💓 ShqipBot është gjallë...");
